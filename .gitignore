@@ -97,3 +97,6 @@ __test__.py
 # VSCode file
 settings.json
 launch.json
+
+# IDE
+.idea/
