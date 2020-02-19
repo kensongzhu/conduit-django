@@ -52,6 +52,7 @@ class TestAuthenticationAPI(object):
 
     def test_get_user(self, drf_client):
         user = User.objects.create_user(username='foo', email='foo@example.org', password='secret123')
+
         # Basic Auth
         # drf_client.login(username='foo@example.org', password='secret123')
 
@@ -78,17 +79,23 @@ class TestAuthenticationAPI(object):
 
         url = reverse('authentication:user-detail')
 
-        data = {'user': {
-            "username": "bar",
-            "email": "bar@example.org",
-            "password": "admin123456"
-        }}
+        data = {
+            'user': {
+                "username": "bar",
+                "email": "bar@example.org",
+                "password": "admin123456",
+                "bio": "bar's bio",
+                "image": "https://bars.png"
+            },
+        }
 
         resp = drf_client.put(url, data=json.dumps(data), content_type="application/json")
         actual = resp.json()['user']
         user.refresh_from_db()
 
         assert User.objects.count() == 1
-        assert actual['username'] == 'bar'
-        assert actual['email'] == 'bar@example.org'
-        assert user.check_password('admin123456')
+        assert actual['username'] == data['user']['username'] == user.username
+        assert actual['email'] == data['user']['email'] == user.email
+        assert user.check_password(data['user']['password'])
+        assert actual['bio'] == data['user']['bio'] == user.profile.bio
+        assert actual['image'] == data['user']['image'] == user.profile.image

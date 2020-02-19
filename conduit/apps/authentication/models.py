@@ -5,6 +5,7 @@ from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, Permis
 from django.db import models
 
 from conduit import settings
+from conduit.apps.core.models import TimestampedModel
 
 
 class UserManager(BaseUserManager):
@@ -54,7 +55,7 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
     # Each `User` needs a human-readable unique identifier that we can use to represent the
     # `User` in the UI. We want to index this column in the
     # database to improve lookup performance
@@ -77,12 +78,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     # The `is_staff` flag is expected by Django to determine who can and cannot
     # log into the Django admin site. For most users this fla will always be false.
     is_staff = models.BooleanField(default=False)
-
-    # A timestamp representing when this object was created
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    # a timestamp representing when this object was last updated
-    updated_at = models.DateTimeField(auto_now=True)
 
     # The `USERNAME_FIELD` property tells us which field we will use to log in.
     # In this case we want it to be email field.

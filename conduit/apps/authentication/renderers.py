@@ -1,21 +1,10 @@
-import json
-
-from rest_framework.renderers import JSONRenderer
+from conduit.apps.core.renderers import ConduitJSONRender
 
 
-class UserJSONRenderer(JSONRenderer):
-    charset = 'utf-8'
+class UserJSONRenderer(ConduitJSONRender):
+    object_label = 'user'
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
-        # If the view throws an error (such as the user can't be authenticated or something
-        # similar), `data` will contain an `errors` key. We want the default JSONRenderer to handler rending errors
-        # so we need to check for this case
-        errors = data.get('errors', None)
-
-        if errors is not None:
-            # As mentioned above, we will let default JSONRenderer handle rendering errors
-            return super(UserJSONRenderer, self).render(data)
-
         # If we receive a `token` as part of the response, it will be byte object
         # Byte objects don't serialize well, so we need to decode it before rendering the `User` object
         token = data.get('token', None)
@@ -24,7 +13,4 @@ class UserJSONRenderer(JSONRenderer):
             # As mentioned above, we will decode `token` if it is type of bytes
             data['token'] = token.decode('utf-8')
 
-        # Finally, we can render our data under the "user" namespace
-        return json.dumps(
-            {'user': data}
-        )
+        return super(UserJSONRenderer, self).render(data)

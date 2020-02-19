@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
+from conduit.apps.profiles.serializers import ProfileSerializer
 from .models import User
 
 
@@ -91,9 +92,18 @@ class UserSerializer(serializers.ModelSerializer):
         write_only=True
     )
 
+    # when a field should be handled as a serializer, we must explicitly say
+    # so. Moreover, `UserSerializer` should never expose profile information
+    # so we set `write_only=True`
+    profile = ProfileSerializer(write_only=True)
+
+    # we want to get the `bio` and `image` fields from the related Profile model
+    bio = serializers.CharField(source='profile.bio', read_only=True)
+    image = serializers.CharField(source='profile.image', read_only=True)
+
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'token']
+        fields = ['username', 'email', 'password', 'token', 'profile', 'bio', 'image']
 
         # The `read_only_fields` option is an alternative for explicitly
         # specifying the field with `read_only = True`, like we did for password
@@ -112,6 +122,10 @@ class UserSerializer(serializers.ModelSerializer):
         # `validated-data` dictionary before iterating over it
         password = validated_data.pop('password', None)
 
+        # Like password, we have to handle profiles separately. To do that,
+        # we remove the profile data from `validated_data` dictionary.
+        profile_data = validated_data.pop('profile', {})
+
         for key, value in validated_data.items():
             # For the keys remaining in `validated_data`, we will set then on
             # the current `User` instance one at a time.
@@ -124,5 +138,13 @@ class UserSerializer(serializers.ModelSerializer):
         # After everything has been updated we must explicitly save
         # the model. It's worth pointing out the `set_password` does not save the model.
         instance.save()
+
+        for key, value in profile_data.items():
+            # we are doing the same thing as above, but this time we are'making
+            # changes to Profile model
+            setattr(instance.profile, key, value)
+
+        # save the profile just like we saved the user
+        instance.profile.save()
 
         return instance
