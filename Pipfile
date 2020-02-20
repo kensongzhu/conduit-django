@@ -5,6 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 pytest-django = "*"
+factory-boy = "*"
 
 [packages]
 django-cors-middleware = "==1.3.1"
