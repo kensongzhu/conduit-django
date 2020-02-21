@@ -1,7 +1,7 @@
 import factory
 from django.db.models.signals import post_save
 
-from conduit.apps.articles.models import Article
+from conduit.apps.articles.models import Article, Comment
 from conduit.apps.authentication.models import User
 from conduit.apps.profiles.models import Profile
 
@@ -45,4 +45,14 @@ class ArticleFactory(factory.DjangoModelFactory):
     description = factory.Faker('text', max_nb_chars=200, ext_word_list=None)
     body = factory.Faker('text', max_nb_chars=1000, ext_word_list=None)
 
+    author = factory.SubFactory(ProfileFactory)
+
+
+class CommentFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = Comment
+
+    body = factory.Faker('text', max_nb_chars=144, ext_word_list=None)
+
+    article = factory.SubFactory(ArticleFactory)
     author = factory.SubFactory(ProfileFactory)

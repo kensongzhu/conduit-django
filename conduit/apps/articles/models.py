@@ -1,4 +1,5 @@
 from django.db import models
+
 from conduit.apps.core.models import TimestampedModel
 
 
@@ -19,3 +20,15 @@ class Article(TimestampedModel):
 
     def __str__(self):
         return self.title
+
+
+class Comment(TimestampedModel):
+    body = models.TextField()
+
+    article = models.ForeignKey(
+        Article, on_delete=models.CASCADE, related_name='comments'
+    )
+
+    author = models.ForeignKey(
+        'profiles.Profile', on_delete=models.CASCADE, related_name="comments"
+    )
