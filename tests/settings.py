@@ -1,7 +1,6 @@
 from conduit.settings import *
 
 INSTALLED_APPS += [
-    'tests.profiles',
     'tests'
 ]
 
