@@ -34,6 +34,16 @@ class ProfileFactory(factory.DjangoModelFactory):
     # this disables the RelatedFactory
     user = factory.SubFactory(UserFactory, profile=None)
 
+    @factory.post_generation
+    def follows(self, create, extracted, **kwargs):
+        if create:
+            # simple build, do nothing
+            return
+
+        if extracted:
+            for p in extracted:
+                self.follows.add(p)
+
 
 class ArticleFactory(factory.DjangoModelFactory):
     class Meta:

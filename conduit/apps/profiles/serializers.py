@@ -8,11 +8,26 @@ class ProfileSerializer(serializers.ModelSerializer):
     bio = serializers.CharField(allow_blank=True, required=False)
     # image = serializers.SerializerMethodField()
     image = serializers.URLField(default='https://static.productionready.io/images/smiley-cyrus.jpg')
+    following = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ('username', 'bio', 'image',)
+        fields = ('username', 'bio', 'image', 'following')
         read_only_fields = ('username',)
+
+    def get_following(self, instance):
+        request = self.context.get('request', None)
+
+        if not request:
+            return False
+
+        if not request.user.is_authenticated:
+            return False
+
+        follower = request.user.profile
+        followee = instance
+
+        return follower.is_following(followee)
 
     # def get_image(self, obj):
     #     if obj.image:

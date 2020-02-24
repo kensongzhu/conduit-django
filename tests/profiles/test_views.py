@@ -1,15 +1,28 @@
 import pytest
 from django.shortcuts import reverse
 
-from conduit.apps.authentication.models import User
+from ..factories import UserFactory
 
 
 @pytest.mark.django_db
-def test_get_profile(drf_client):
-    user = User.objects.create_user(username="foo", email="foo@example.org", password="pass123456")
+class TestProfileViews(object):
 
-    url = reverse('profiles:profile-detail', args=(user.username,))
-    resp = drf_client.get(url)
-    profile = resp.json()['profile']
+    @pytest.mark.django_db
+    def test_user_get_profile(self, drf_client):
+        user_foo = UserFactory.create(
+            username="foo",
+            email="foo@example.org",
+            password="pass123456",
+            profile__bio="foo's bio",
+            profile__image='https://foo.png'
+        )
 
-    assert profile['username'] == user.username
+        url = reverse('profiles:profile-detail', args=(user_foo.username,))
+        resp = drf_client.get(url)
+        profile = resp.json()['profile']
+
+        assert profile['username'] == user_foo.username
+        assert profile['bio'] == "foo's bio"
+        assert profile['image'] == 'https://foo.png'
+        # anonymous user's following default false
+        assert not profile['following']
