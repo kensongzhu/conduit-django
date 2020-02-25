@@ -6,6 +6,16 @@ from conduit.apps.authentication.models import User
 from conduit.apps.profiles.models import Profile
 
 
+def _post_generate_m2m(attr, create, extracted, **kwargs):
+    if not create:
+        # simple build, do nothing
+        return
+
+    if extracted:
+        for instance in extracted:
+            attr.add(instance)
+
+
 @factory.django.mute_signals(post_save)
 class UserFactory(factory.DjangoModelFactory):
     class Meta:
@@ -36,13 +46,11 @@ class ProfileFactory(factory.DjangoModelFactory):
 
     @factory.post_generation
     def follows(self, create, extracted, **kwargs):
-        if create:
-            # simple build, do nothing
-            return
+        _post_generate_m2m(self.follows, create, extracted, **kwargs)
 
-        if extracted:
-            for p in extracted:
-                self.follows.add(p)
+    @factory.post_generation
+    def favorites(self, create, extracted, **kwargs):
+        _post_generate_m2m(self.favorites, create, extracted, **kwargs)
 
 
 class ArticleFactory(factory.DjangoModelFactory):

@@ -1,7 +1,8 @@
 from rest_framework import mixins, viewsets, status, generics
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Article
 from .models import Comment
@@ -25,7 +26,11 @@ class ArticleViewSet(
     lookup_field = 'slug'
 
     def create(self, request, *args, **kwargs):
-        serializer_context = {'author': request.user.profile}
+        serializer_context = {
+            'author': request.user.profile,
+            'request': request
+        }
+
         serializer_data = request.data.get('article', {})
 
         serializer = self.serializer_class(data=serializer_data, context=serializer_context)
@@ -35,17 +40,33 @@ class ArticleViewSet(
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def list(self, request, *args, **kwargs):
+        serializer_context = {'request': request}
+        serializer_instances = Article.objects.all()
+
+        serializer = self.serializer_class(
+            instance=serializer_instances,
+            context=serializer_context,
+            many=True
+        )
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def retrieve(self, request, *args, **kwargs):
+        serializer_context = {'request': request}
+
         try:
             serializer_instance = self.queryset.get(slug=kwargs.get('slug', ''))
         except Article.DoesNotExist:
             raise NotFound('An article with this slug does not exist.')
 
-        serializer = self.serializer_class(instance=serializer_instance)
+        serializer = self.serializer_class(instance=serializer_instance, context=serializer_context)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
+        serializer_context = {'request': request}
+
         try:
             serializer_instance = self.queryset.get(slug=kwargs.get('slug', ''))
         except Article.DoesNotExist:
@@ -53,12 +74,59 @@ class ArticleViewSet(
 
         serializer_data = request.data.get('article', {})
 
-        serializer = self.serializer_class(instance=serializer_instance, data=serializer_data, partial=True)
+        serializer = self.serializer_class(
+            instance=serializer_instance,
+            data=serializer_data,
+            context=serializer_context,
+            partial=True
+        )
 
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ArticlesFavoriteAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    renderer_classes = (ArticleJSONRenderer,)
+    serializer_class = ArticleSerializer
+
+    def post(self, request, **kwargs):
+        profile = request.user.profile
+        serializer_context = {'request': request}
+
+        try:
+            article = Article.objects.get(slug=kwargs.get('article_slug'))
+        except Article.DoesNotExist:
+            raise NotFound('An article with this slug was not found.')
+
+        profile.favorite(article)
+
+        serializer = self.serializer_class(
+            instance=article,
+            context=serializer_context
+        )
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, **kwargs):
+        profile = request.user.profile
+        serializer_context = {'request': request}
+
+        try:
+            article = Article.objects.get(slug=kwargs.get('article_slug'))
+        except Article.DoesNotExist:
+            raise NotFound('An article with this slug was not found.')
+
+        profile.unfavorite(article)
+
+        serializer = self.serializer_class(
+            instance=article,
+            context=serializer_context
+        )
+        
+        return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
 
 
 class CommentListCreateAPIView(generics.ListCreateAPIView):
