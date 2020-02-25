@@ -11,7 +11,6 @@ from ..factories import UserFactory, ProfileFactory, ArticleFactory, CommentFact
 @pytest.mark.django_db
 class TestArticlesViews(object):
 
-    @pytest.mark.django_db
     def test_create_article(self, drf_client):
         profile = ProfileFactory(user__username='foo')
         drf_client.credentials(HTTP_AUTHORIZATION='Token ' + profile.user.token)
@@ -38,7 +37,6 @@ class TestArticlesViews(object):
         assert actual['body'] == article_dict['body']
         assert actual['description'] == article_dict['description']
 
-    @pytest.mark.django_db
     def test_list_articles(self, drf_client):
         ArticleFactory.create_batch(size=10, author=ProfileFactory(user__username='author1'))
         ArticleFactory.create_batch(size=5, author=ProfileFactory(user__username='author2'))
@@ -49,7 +47,6 @@ class TestArticlesViews(object):
 
         assert len(actual) == 15
 
-    @pytest.mark.django_db
     def test_get_articles_by_slug(self, drf_client):
         articles = ArticleFactory.create_batch(size=5, author=ProfileFactory(user__username='author1'))
         first = articles[0]
@@ -64,7 +61,6 @@ class TestArticlesViews(object):
         assert actual['body'] == first.body
         assert actual['description'] == first.description
 
-    @pytest.mark.django_db
     def test_update_article(self, drf_client):
         profile = ProfileFactory(user__username='foo')
         articles = ArticleFactory.create_batch(size=5, author=profile)
@@ -139,3 +135,32 @@ class TestCommentsViews(object):
 
         assert len(expected_data) == len(commenters)
         assert actual_commenter == expect_commenter
+
+
+@pytest.mark.django_db
+class TestArticleFavoriteViews(object):
+
+    def test_favorite_article(self, drf_auth_client):
+        user = UserFactory.create(username="foo")
+        article = ArticleFactory.create(author=user.profile, title='my article')
+
+        url = reverse('articles:article-favorite', args=(article.slug,))
+
+        resp = drf_auth_client.post(url)
+        article = resp.json()['article']
+
+        assert article['favorited']
+        assert article['favoritesCount'] == 1
+
+    def test_unfavorite_article(self, drf_auth_client):
+        user = UserFactory.create(username="foo")
+        article = ArticleFactory.create(author=user.profile, title='my article')
+
+        drf_auth_client.user.profile.favorite(article)
+        assert drf_auth_client.user.profile.has_favorited(article)
+
+        url = reverse('articles:article-favorite', args=(article.slug,))
+        resp = drf_auth_client.delete(url)
+
+        assert resp.status_code == 204
+        assert not drf_auth_client.user.profile.has_favorited(article)
