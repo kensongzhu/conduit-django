@@ -1,7 +1,7 @@
 import factory
 from django.db.models.signals import post_save
 
-from conduit.apps.articles.models import Article, Comment
+from conduit.apps.articles.models import Article, Comment, Tag
 from conduit.apps.authentication.models import User
 from conduit.apps.profiles.models import Profile
 
@@ -65,6 +65,10 @@ class ArticleFactory(factory.DjangoModelFactory):
 
     author = factory.SubFactory(ProfileFactory)
 
+    @factory.post_generation
+    def tags(self, create, extracted, **kwargs):
+        _post_generate_m2m(self.tags, create, extracted, **kwargs)
+
 
 class CommentFactory(factory.DjangoModelFactory):
     class Meta:
@@ -74,3 +78,11 @@ class CommentFactory(factory.DjangoModelFactory):
 
     article = factory.SubFactory(ArticleFactory)
     author = factory.SubFactory(ProfileFactory)
+
+
+class TagFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = Tag
+
+    tag = factory.Faker('text', max_nb_chars=5, ext_word_list=None)
+    slug = factory.Faker('slug')

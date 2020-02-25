@@ -5,7 +5,7 @@ import pytest
 from django.shortcuts import reverse
 from django.utils.text import slugify
 
-from ..factories import UserFactory, ProfileFactory, ArticleFactory, CommentFactory
+from ..factories import UserFactory, ProfileFactory, ArticleFactory, CommentFactory, TagFactory
 
 
 @pytest.mark.django_db
@@ -16,9 +16,14 @@ class TestArticlesViews(object):
         drf_client.credentials(HTTP_AUTHORIZATION='Token ' + profile.user.token)
 
         # payload
-        article_dict = factory.build(dict, FACTORY_CLASS=ArticleFactory, author=profile)
+        tags = TagFactory.create_batch(size=5)
+        tag_list = [tag.tag for tag in tags]
+
+        article_dict = factory.build(dict, FACTORY_CLASS=ArticleFactory, author=profile, tags=(None,))
         article_dict.pop('author')
         article_dict.pop('slug')
+        article_dict.pop('tags')
+        article_dict.update({'tagList': tag_list})
 
         data = json.dumps({
             'article': article_dict
@@ -36,6 +41,7 @@ class TestArticlesViews(object):
         assert slugify(article_dict['title']) in actual['slug']
         assert actual['body'] == article_dict['body']
         assert actual['description'] == article_dict['description']
+        assert sorted(actual['tagList']) == sorted(tag_list)
 
     def test_list_articles(self, drf_client):
         ArticleFactory.create_batch(size=10, author=ProfileFactory(user__username='author1'))
