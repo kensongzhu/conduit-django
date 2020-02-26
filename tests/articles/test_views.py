@@ -1,10 +1,10 @@
 import json
+from urllib.parse import urlencode
 
 import factory
 import pytest
 from django.shortcuts import reverse
 from django.utils.text import slugify
-
 from ..factories import UserFactory, ProfileFactory, ArticleFactory, CommentFactory, TagFactory
 
 pytestmark = pytest.mark.django_db
@@ -12,9 +12,8 @@ pytestmark = pytest.mark.django_db
 
 class TestArticlesViews(object):
 
-    def test_create_article(self, drf_client):
+    def test_create_article(self, drf_auth_client):
         profile = ProfileFactory(user__username='foo')
-        drf_client.credentials(HTTP_AUTHORIZATION='Token ' + profile.user.token)
 
         # payload
         tags = TagFactory.create_batch(size=5)
@@ -33,7 +32,7 @@ class TestArticlesViews(object):
         # url
         url = reverse('articles:article-list')
 
-        resp = drf_client.post(url, data=data, content_type="application/json")
+        resp = drf_auth_client.post(url, data=data, content_type="application/json")
         print(resp.json())
         actual = resp.json()['article']
 
@@ -44,15 +43,24 @@ class TestArticlesViews(object):
         assert actual['description'] == article_dict['description']
         assert sorted(actual['tagList']) == sorted(tag_list)
 
-    def test_list_articles(self, drf_client):
-        ArticleFactory.create_batch(size=10, author=ProfileFactory(user__username='author1'))
+    def test_paginated_list_articles(self, drf_client):
+        ArticleFactory.create_batch(size=20, author=ProfileFactory(user__username='author1'))
         ArticleFactory.create_batch(size=5, author=ProfileFactory(user__username='author2'))
 
-        url = reverse('articles:article-list')
-        resp = drf_client.get(url)
-        actual = resp.json()['articles']
+        # assert frist page
+        first_page_url = reverse('articles:article-list')
+        fist_page_resp = drf_client.get(first_page_url)
+        actual = fist_page_resp.json()
 
-        assert len(actual) == 15
+        assert len(actual['articles']) == 20
+        assert actual['articlesCount'] == 25
+
+        # assert next page
+        next_page_url = reverse('articles:article-list') + '?' + urlencode({'offset': 20})
+        next_page_resp = drf_client.get(next_page_url)
+        actual = next_page_resp.json()
+
+        assert len(actual['articles']) == 5
 
     def test_get_articles_by_slug(self, drf_client):
         articles = ArticleFactory.create_batch(size=5, author=ProfileFactory(user__username='author1'))
@@ -68,13 +76,12 @@ class TestArticlesViews(object):
         assert actual['body'] == first.body
         assert actual['description'] == first.description
 
-    def test_update_article(self, drf_client):
+    def test_update_article(self, drf_auth_client):
         profile = ProfileFactory(user__username='foo')
         articles = ArticleFactory.create_batch(size=5, author=profile)
         first = articles[0]
 
         url = reverse('articles:article-detail', args=(first.slug,))
-        drf_client.credentials(HTTP_AUTHORIZATION='Token ' + profile.user.token)
 
         data = {
             'article': {
@@ -82,7 +89,7 @@ class TestArticlesViews(object):
             }
         }
 
-        resp = drf_client.put(url, json.dumps(data), content_type="application/json")
+        resp = drf_auth_client.put(url, json.dumps(data), content_type="application/json")
 
         actual = resp.json()['article']
 
@@ -182,6 +189,7 @@ class TestTagsListView(object):
         url = reverse('articles:tag-list')
 
         resp = drf_client.get(url)
+        print(resp.json())
         actual = resp.json()['tags']
 
         actual_tags = sorted(actual)

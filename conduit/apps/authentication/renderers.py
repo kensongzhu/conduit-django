@@ -3,6 +3,8 @@ from conduit.apps.core.renderers import ConduitJSONRender
 
 class UserJSONRenderer(ConduitJSONRender):
     object_label = 'user'
+    pagination_object_label = 'users'
+    pagination_count_label = 'usersCount'
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
         # If we receive a `token` as part of the response, it will be byte object

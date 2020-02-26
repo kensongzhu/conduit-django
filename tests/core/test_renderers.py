@@ -1,10 +1,8 @@
 import json
 
 import pytest
-from rest_framework.utils.serializer_helpers import ReturnList
 
 from conduit.apps.core.renderers import ConduitJSONRender
-from tests.serializers import DummySerializer
 
 # core renderer
 renderer = ConduitJSONRender()
@@ -23,13 +21,18 @@ class TestCoreRenderer(object):
 
     def test_render_list_objects(self):
         data_list = [{'id': 1, 'name': 'foo'}]
-        data = ReturnList(data_list, serializer=DummySerializer())
+
+        data = {
+            'results': data_list,
+            'count': len(data_list)
+        }
 
         rendered = renderer.render(data)
         result = json.loads(rendered)
 
         assert "objects" in result
         assert result["objects"] == data_list
+        assert result['count'] == len(data_list)
 
     def test_render_errors(self):
         data = {'errors': "errors on purpose"}

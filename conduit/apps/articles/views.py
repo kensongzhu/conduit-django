@@ -44,15 +44,16 @@ class ArticleViewSet(
 
     def list(self, request, *args, **kwargs):
         serializer_context = {'request': request}
-        serializer_instances = Article.objects.all()
+        # serializer_instances = Article.objects.all()
+        page_instances = self.paginate_queryset(self.queryset)
 
         serializer = self.serializer_class(
-            instance=serializer_instances,
+            instance=page_instances,
             context=serializer_context,
             many=True
         )
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return self.get_paginated_response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         serializer_context = {'request': request}
@@ -193,7 +194,7 @@ class TagListAPIView(generics.ListAPIView):
     pagination_class = None
 
     def list(self, request, *args, **kwargs):
-        serializer_data = self.get_queryset()
-        serializer = self.serializer_class(instance=serializer_data, many=True)
+        serializer_instances = self.get_queryset()
+        serializer = self.serializer_class(instance=serializer_instances, many=True)
 
         return Response({'tags': serializer.data}, status=status.HTTP_200_OK)

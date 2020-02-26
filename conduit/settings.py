@@ -88,8 +88,10 @@ DATABASES = {
 # Django REST Framework
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'conduit.apps.core.exceptions.core_exception_handler',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'NON_FIELD_ERRORS_KEY': 'error',
-    'DEFAULT_AUTHENTICATION_CLASSES': ('conduit.apps.authentication.backends.JWTAuthentication',)
+    'DEFAULT_AUTHENTICATION_CLASSES': ('conduit.apps.authentication.backends.JWTAuthentication',),
+    'PAGE_SIZE': 20,
 }
 
 # Authentication
