@@ -1,5 +1,6 @@
 import factory
 from django.db.models.signals import post_save
+from django.utils.text import slugify
 
 from conduit.apps.articles.models import Article, Comment, Tag
 from conduit.apps.authentication.models import User
@@ -84,5 +85,7 @@ class TagFactory(factory.DjangoModelFactory):
     class Meta:
         model = Tag
 
-    tag = factory.Faker('text', max_nb_chars=5, ext_word_list=None)
-    slug = factory.Faker('slug')
+    tag = factory.Faker('sentence', nb_words=3, variable_nb_words=True, ext_word_list=None)
+    # slug = factory.Faker('slug')
+
+    slug = factory.LazyAttribute(lambda x: slugify(x.tag))

@@ -1,15 +1,17 @@
 from rest_framework import mixins, viewsets, status, generics
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Article
 from .models import Comment
+from .models import Tag
 from .renderers import ArticleJSONRenderer
 from .renderers import CommentJSONRenderer
 from .serializers import ArticleSerializer
 from .serializers import CommentSerializer
+from .serializers import TagSerializer
 
 
 class ArticleViewSet(
@@ -125,7 +127,7 @@ class ArticlesFavoriteAPIView(APIView):
             instance=article,
             context=serializer_context
         )
-        
+
         return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
 
 
@@ -182,3 +184,16 @@ class CommentDestroyAPIView(generics.DestroyAPIView):
         comment.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TagListAPIView(generics.ListAPIView):
+    queryset = Tag.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = TagSerializer
+    pagination_class = None
+
+    def list(self, request, *args, **kwargs):
+        serializer_data = self.get_queryset()
+        serializer = self.serializer_class(instance=serializer_data, many=True)
+
+        return Response({'tags': serializer.data}, status=status.HTTP_200_OK)

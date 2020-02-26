@@ -7,8 +7,9 @@ from django.utils.text import slugify
 
 from ..factories import UserFactory, ProfileFactory, ArticleFactory, CommentFactory, TagFactory
 
+pytestmark = pytest.mark.django_db
 
-@pytest.mark.django_db
+
 class TestArticlesViews(object):
 
     def test_create_article(self, drf_client):
@@ -88,7 +89,6 @@ class TestArticlesViews(object):
         assert actual['description'] == "foo's description"
 
 
-@pytest.mark.django_db
 class TestCommentsViews(object):
 
     def test_delete_comment(self, drf_auth_client):
@@ -143,7 +143,6 @@ class TestCommentsViews(object):
         assert actual_commenter == expect_commenter
 
 
-@pytest.mark.django_db
 class TestArticleFavoriteViews(object):
 
     def test_favorite_article(self, drf_auth_client):
@@ -170,3 +169,22 @@ class TestArticleFavoriteViews(object):
 
         assert resp.status_code == 204
         assert not drf_auth_client.user.profile.has_favorited(article)
+
+
+class TestTagsListView(object):
+
+    def test_list_tags(self, drf_client):
+        # Overwrite faker sentence punctuation in this test
+        from faker.providers.lorem import Provider
+        Provider.sentence_punctuation = ''
+
+        tags = TagFactory.create_batch(size=5)
+        url = reverse('articles:tag-list')
+
+        resp = drf_client.get(url)
+        actual = resp.json()['tags']
+
+        actual_tags = sorted(actual)
+        expected_tags = sorted([t.tag for t in tags])
+
+        assert actual_tags == expected_tags
