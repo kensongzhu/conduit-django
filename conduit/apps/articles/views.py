@@ -27,6 +27,24 @@ class ArticleViewSet(
     queryset = Article.objects.select_related('author', 'author__user')
     lookup_field = 'slug'
 
+    def get_queryset(self):
+        queryset = self.queryset
+        # query params
+        author = self.request.query_params.get('author', None)
+        tag = self.request.query_params.get('tag', None)
+        favorited_by = self.request.query_params.get('favorited', None)
+
+        if author is not None:
+            queryset = queryset.filter(author__user__username=author)
+
+        if tag is not None:
+            queryset = queryset.filter(tags__tag=tag)
+
+        if favorited_by is not None:
+            queryset = queryset.filter(favorited_by__user__username=favorited_by)
+
+        return queryset
+
     def create(self, request, *args, **kwargs):
         serializer_context = {
             'author': request.user.profile,
@@ -44,8 +62,7 @@ class ArticleViewSet(
 
     def list(self, request, *args, **kwargs):
         serializer_context = {'request': request}
-        # serializer_instances = Article.objects.all()
-        page_instances = self.paginate_queryset(self.queryset)
+        page_instances = self.paginate_queryset(self.get_queryset())
 
         serializer = self.serializer_class(
             instance=page_instances,
@@ -198,3 +215,24 @@ class TagListAPIView(generics.ListAPIView):
         serializer = self.serializer_class(instance=serializer_instances, many=True)
 
         return Response({'tags': serializer.data}, status=status.HTTP_200_OK)
+
+
+class ArticlesFeedAPIView(generics.ListAPIView):
+    permission_classes = (IsAuthenticated,)
+    queryset = Article.objects.all()
+    renderer_classes = (ArticleJSONRenderer,)
+    serializer_class = ArticleSerializer
+
+    def get_queryset(self):
+        return Article.objects.filter(
+            author__in=self.request.user.profile.follows.all()
+        )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+
+        serializer_context = {'request': request}
+        serializer = self.serializer_class(instance=page, context=serializer_context, many=True)
+
+        return self.get_paginated_response(serializer.data)

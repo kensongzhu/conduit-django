@@ -5,6 +5,7 @@ import factory
 import pytest
 from django.shortcuts import reverse
 from django.utils.text import slugify
+
 from ..factories import UserFactory, ProfileFactory, ArticleFactory, CommentFactory, TagFactory
 
 pytestmark = pytest.mark.django_db
@@ -94,6 +95,58 @@ class TestArticlesViews(object):
         actual = resp.json()['article']
 
         assert actual['description'] == "foo's description"
+
+    def test_list_articles_by_author(self, drf_client):
+        user_foo = UserFactory(username='foo')
+        ArticleFactory.create_batch(size=5, author=user_foo.profile)
+
+        url = reverse('articles:article-list') + '?' + urlencode({'author': user_foo.username})
+        resp = drf_client.get(url)
+        actual = resp.json()
+
+        # it should equal foo's articles number
+        assert actual['articlesCount'] == 5
+
+        for article in actual['articles']:
+            assert article['author']['username'] == user_foo.username
+
+    def test_list_articles_favorited_by_username(self, drf_client):
+        user_foo = UserFactory(username='foo')
+        user_bar = UserFactory(username='bar')
+
+        articles = ArticleFactory.create_batch(size=10, author=user_foo.profile)
+
+        # user bar favorite the first 5 articles
+        for article in articles[:5]:
+            user_bar.profile.favorite(article)
+
+        url = reverse('articles:article-list') + '?' + urlencode({'favorited': user_bar.username})
+        resp = drf_client.get(url)
+        actual = resp.json()
+
+        # it should equal foo's articles number
+        assert actual['articlesCount'] == 5
+
+        for article in actual['articles']:
+            assert article['author']['username'] == user_foo.username
+
+    def test_list_articles_by_tag(self, drf_client):
+        first_tag = TagFactory.create()
+        second_tag = TagFactory.create()
+
+        user_foo = UserFactory(username='foo')
+        # articles with first tag
+        ArticleFactory.create_batch(size=3, author=user_foo.profile, tags=(first_tag,))
+        # articles with second tag
+        ArticleFactory.create_batch(size=5, author=user_foo.profile, tags=(second_tag,))
+
+        url = reverse('articles:article-list') + '?' + urlencode({'tag': first_tag.tag})
+        resp = drf_client.get(url)
+        actual = resp.json()
+
+        assert actual['articlesCount'] == 3
+        for article in actual['articles']:
+            assert first_tag.tag in article['tagList']
 
 
 class TestCommentsViews(object):
@@ -196,3 +249,26 @@ class TestTagsListView(object):
         expected_tags = sorted([t.tag for t in tags])
 
         assert actual_tags == expected_tags
+
+
+class TestArticleFeedViews(object):
+
+    def test_feed_articles(self, drf_auth_client):
+        user_foo = UserFactory.create(username="foo")
+        user_bar = UserFactory.create(username="bar")
+
+        ArticleFactory.create_batch(size=5, author=user_foo.profile)
+        ArticleFactory.create_batch(size=10, author=user_bar.profile)
+
+        # follow user `foo`
+        drf_auth_client.user.profile.follow(user_foo.profile)
+
+        url = reverse('articles:articles-feed')
+        resp = drf_auth_client.get(url)
+        actual = resp.json()
+
+        # it should equal foo's articles number
+        assert actual['articlesCount'] == 5
+
+        for article in actual['articles']:
+            assert article['author']['username'] == user_foo.username
